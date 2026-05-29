@@ -1,527 +1,498 @@
 import java.util.*;
 
 /**
- * Main driver class for the product management system.
- * <p>
- * Responsibilities:
- * <ul>
- *     <li>Load products from an input file.</li>
- *     <li>Store products in a hash table, BST, and a set.</li>
- *     <li>Provide a menu-driven interface to:
- *         <ul>
- *             <li>Add, search, and remove products.</li>
- *             <li>Display products sorted by price.</li>
- *             <li>Filter products by price range, category, and tags.</li>
- *             <li>Use set operations like intersection, difference, and union on products.</li>
- *             <li>Manage a simple shopping cart backed by a set.</li>
- *         </ul>
- *     </li>
- * </ul>
- * </p>
+ * Main driver class for the Inventory Management System.
+ *
+ * <p>Loads products from a CSV file into a hash table, a BST, and a master
+ * set, then presents an interactive CLI menu for product management and
+ * shopping-cart operations.</p>
+ *
+ * <p><b>Menu options:</b></p>
+ * <ol>
+ *   <li>Add a new product</li>
+ *   <li>Search a product by ID</li>
+ *   <li>Display all products sorted by price (BST in-order)</li>
+ *   <li>Remove a product by ID</li>
+ *   <li>Find products within a price range</li>
+ *   <li>Find the most and least expensive products</li>
+ *   <li>Find products by a single tag</li>
+ *   <li>Find products matching ALL specified tags (intersection)</li>
+ *   <li>Find products in a category excluding a tag (set difference)</li>
+ *   <li>Shopping cart</li>
+ *   <li>Find products matching ANY specified tag (union)</li>
+ *   <li>Filter products by tag and price range (combined)</li>
+ *   <li>Quit</li>
+ * </ol>
+ *
+ * @author Plinio Durango
+ * @version 3.0
  */
 public class ProductManager {
 
-    /**
-     * Shared {@link Scanner} instance used to read user input from standard input.
-     */
-    private static Scanner sc = new Scanner(System.in);
-    
-    /**
-     * Master set of all products currently known to the system.
-     * <p>
-     * This set is used for tag/category-based filtering and as the
-     * authoritative collection of products.
-     * </p>
-     */
+    /** Scanner shared across all input operations. */
+    private static final Scanner sc = new Scanner(System.in);
+
+    /** Master set of all products — used for tag/category set operations. */
     private static Set<Product> products;
+
+    // =========================================================================
+    // ENTRY POINT
+    // =========================================================================
 
     /**
      * Application entry point.
-     * <p>
-     * Expects a single command-line argument: the path to the input file
-     * containing product data. The method:
-     * <ol>
-     *     <li>Validates the command-line argument.</li>
-     *     <li>Loads products via {@code FileProcessor.readUsersFile(...)}.</li>
-     *     <li>Inserts products into a {@code HashTable} and {@code BST}.</li>
-     *     <li>Enters an interactive menu loop to perform various operations
-     *         on the products and the shopping cart.</li>
-     * </ol>
-     * </p>
      *
-     * @param args command-line arguments; expects exactly one argument: the file path.
+     * @param args expects exactly one argument: the path to the CSV product file.
      */
     public static void main(String[] args) {
-
         if (args.length != 1) {
             System.err.println("Usage: java ProductManager <filename>");
             System.exit(1);
         }
 
         String filePath = args[0];
-
         HashTable hTable = new HashTable();
         BST bst = new BST();
-
         products = FileProcessor.readUsersFile(filePath);
 
         for (Product p : products) {
             hTable.insert(p);
             bst.insert(p);
         }
-        while (true) {
 
+        // Shopping cart lives outside the menu loop so it persists across sessions.
+        ShoppingCart shc = new ShoppingCart(hTable, bst);
+
+        while (true) {
             printMenu();
             int choice = intValidation();
 
             if (choice < 1 || choice > 13) {
-                System.out.println("Please type a number from 1 to 13.");
+                System.out.println("Please enter a number from 1 to 13.");
                 continue;
             }
 
             if (choice == 13) {
-                System.out.println("Quitting...");
+                System.out.println("Goodbye!");
                 break;
-            }
-
-            // Add new product
-            if (choice == 1) {
-                System.out.print("Please type ID: ");
-                String iD = sc.nextLine();
-
-                System.out.print("Please type Name: ");
-                String name = sc.nextLine();
-
-                System.out.print("Please type Price: ");
-                float price = sc.nextFloat();
-                sc.nextLine();
-
-                System.out.print("Please type Category: ");
-                String category = sc.nextLine();
-
-                System.out.print("Please type Quantity: ");
-                int quantity = sc.nextInt();
-                sc.nextLine();
-
-                System.out.print("Please type tags (comma separated): ");
-                String tagLine = sc.nextLine();
-                Set<String> userTags = new HashSet<>();
-                for (String t : tagLine.split(",")) userTags.add(t.trim().toLowerCase());
-
-                Product newProduct = new Product(iD, name, price, category, quantity, userTags);
-
-                hTable.insert(newProduct);
-                bst.insert(newProduct);
-                products.add(newProduct);
-
-                System.out.println("Product added successfully!");
-            }
-
-            // Search by ID
-            if (choice == 2) {
-                System.out.print("Enter product ID: ");
-                String id = sc.nextLine();
-
-                Product found = hTable.getProduct(id);
-                if (found != null) System.out.println(found);
-                else System.out.println("Product not found.");
-            }
-
-            // Display products sorted by price
-            if (choice == 3) {
-                System.out.println("Products sorted by price:");
+            } else if (choice == 1) {
+                addProduct(hTable, bst);
+            } else if (choice == 2) {
+                searchById(hTable);
+            } else if (choice == 3) {
+                System.out.println("\nProducts sorted by price:");
                 bst.inorderTraversal();
+            } else if (choice == 4) {
+                removeProduct(hTable, bst);
+            } else if (choice == 5) {
+                filterByPriceRange(bst);
+            } else if (choice == 6) {
+                showMinMax(bst);
+            } else if (choice == 7) {
+                filterBySingleTag();
+            } else if (choice == 8) {
+                filterByAllTags();
+            } else if (choice == 9) {
+                filterByCategoryNotTag();
+            } else if (choice == 10) {
+                shoppingCartMenu(shc);
+            } else if (choice == 11) {
+                filterByAnyTag();
+            } else if (choice == 12) {
+                filterByTagAndPriceRange();
             }
+        }
+        sc.close();
+    }
 
-            // Remove by ID
-            if (choice == 4) {
-                System.out.print("Enter product ID: ");
-                String id = sc.nextLine();
+    // =========================================================================
+    // MENU HANDLERS
+    // =========================================================================
 
-                Product p = hTable.getProduct(id);   // or getProduct(id)
+    /**
+     * Prompts the user for product details and inserts the new product into
+     * all three data structures.
+     *
+     * @param hTable the hash table to insert into
+     * @param bst    the BST to insert into
+     */
+    private static void addProduct(HashTable hTable, BST bst) {
+        System.out.print("ID: ");
+        String id = sc.nextLine().trim();
 
-                if (p == null) {
-                    System.out.println("Product not found");
-                }
-                else {
-                    System.out.println("---------Removing product from a BST-------------");
-                    bst.remove(p);
-                    System.out.println("Product: " + p.getName() + " successfully removed from BST");
+        if (hTable.getProduct(id) != null) {
+            System.out.println("A product with ID '" + id + "' already exists.");
+            return;
+        }
 
-                    System.out.println("---------Removing product from a hash table-----------");
-                    Product removedProductHT =  hTable.remove(id);
-                    System.out.println("Product: " + removedProductHT.getName() + " removed successfully from Hash Table.");
+        System.out.print("Name: ");
+        String name = sc.nextLine().trim();
 
-                    System.out.println("---------Removing product from a the Set -------------");
-                    products.remove(p);
-                    System.out.println("Product: " + p.getName() + " successfully removed from Set");
+        System.out.print("Price: ");
+        double price = sc.nextDouble();
+        sc.nextLine();
 
+        System.out.print("Category: ");
+        String category = sc.nextLine().trim();
 
+        System.out.print("Stock quantity: ");
+        int stock = sc.nextInt();
+        sc.nextLine();
 
-                }  
-            }
+        System.out.print("Tags (comma-separated): ");
+        String tagLine = sc.nextLine();
+        Set<String> tags = parseTags(tagLine, ",");
 
-            // Find products within range
-            if (choice == 5) {
+        Product newProduct = new Product(id, name, price, category, stock, tags);
+        hTable.insert(newProduct);
+        bst.insert(newProduct);
+        products.add(newProduct);
+        System.out.println("Product '" + name + "' added successfully.");
+    }
 
-                double minValue = 0;
-                double maxValue = 0;
-
-                while(true) {
-                    System.out.print("Please enter the minimum value: ");
-                    minValue = sc.nextDouble();
-                    sc.nextLine();
-
-                    System.out.print("Please enter the maximum value: ");
-                    maxValue = sc.nextDouble();
-                    sc.nextLine();
-
-                    if(minValue < maxValue) break;
-                    else System.out.println("Maximum value must be greater than minimum value");
-                }
-
-                Set<Product> result = bst.getProductsInRange(minValue, maxValue);
-
-                if (result.isEmpty()) {
-                    System.out.println("No products found in that price range.");
-                } else {
-                    for (Product p : result) {
-                        System.out.println(p);
-                        System.out.println();
-                    }
-                }
-            }
-
-
-            // Find least and most expensive
-            if (choice == 6) {
-                Product leastExpensive = bst.findMin();
-                Product mostExpensive = bst.findMax();
-
-                System.out.println("Least expensive product: " + leastExpensive);
-                System.out.println();
-                System.out.println("Most expensive product: " + mostExpensive);
-            }
-
-            // Find by tag
-            if (choice == 7) {
-
-                System.out.print("Enter a tag: ");
-                String targetTag = sc.nextLine().trim().toLowerCase();
-
-                Set<Product> result = new HashSet<>();
-
-                for (Product p : products) {
-                    Set<String> productTags = p.getTags();
-
-                    for (String t : productTags) {
-                        if (t.toLowerCase().equals(targetTag)) {
-                            result.add(p);
-                            break;
-                        }
-                    }
-                }
-
-                if (result.isEmpty()) {
-                    System.out.println("No products found with tag: " + targetTag);
-                } else {
-                    System.out.println("Products with tag '" + targetTag + "':");
-                    for (Product p : result) {
-                        System.out.println(p);
-                        System.out.println();
-                    }
-                }
-            }
-            // Find products matching multiple tags"
-            if (choice == 8) {
-
-                System.out.print("Please type tags (comma separated): ");
-                String tagLine = sc.nextLine();
-
-                Set<String> userTags = new HashSet<>();
-                for (String t : tagLine.split(",")) {
-                    userTags.add(t.trim().toLowerCase());
-                }
-
-                Set<Product> result = new HashSet<>();
-
-                for (Product p : products) {
-
-                    
-                    Set<String> productTags = new HashSet<>();
-                    for (String t : p.getTags()) {
-                        productTags.add(t.toLowerCase());
-                    }
-
-                    // Check if productTags contains ALL userTags
-                    if (productTags.containsAll(userTags)) {
-                        result.add(p);
-                    }
-                }
-
-                // Print results
-                if (result.isEmpty()) {
-                    System.out.println("No matching products.");
-                } else {
-                    System.out.println("Products matching ALL tags:");
-                    for (Product p : result){
-                        System.out.println(p);
-                        System.out.println();
-                    }
-                }
-            }
-            // Find products in one category but not another
-            if (choice == 9) { 
-
-                System.out.print("Category to include: ");
-                String includeCategory = sc.nextLine().trim().toLowerCase();
-
-                System.out.print("Tag to exclude: ");
-                String excludeTag = sc.nextLine().trim().toLowerCase();
-
-                Set<Product> categorySet = new HashSet<>();
-                Set<Product> excludedSet = new HashSet<>();
-
-                // Building CATEGORY set
-                for (Product p : products) {
-                    if (p.getCategory().equalsIgnoreCase(includeCategory)) {
-                        categorySet.add(p);
-                    }
-                }
-
-                // Building EXCLUDED set (products that *do* contain the tag)
-                for (Product p : products) {
-                    for (String tag : p.getTags()) {
-                        if (tag.toLowerCase().equals(excludeTag)) {
-                            excludedSet.add(p);
-                            break;
-                        }
-                    }
-                }
-
-                // Set difference: categorySet - excludedSet
-                categorySet.removeAll(excludedSet);
-
-                // Output
-                if (categorySet.isEmpty()) {
-                    System.out.println("No products found.");
-                } else {
-                    System.out.println("Products in category '" + includeCategory + "' but NOT tagged '" + excludeTag + "':");
-                    for (Product p : categorySet) {
-                        System.out.println(p);
-                    }
-                }
-            }
-            // Shoping Cart
-            if (choice == 10) {
-                ShoppingCart shc = new ShoppingCart(hTable,bst);
-                while(true) {
-                    shopingCart();
-                    int choice2 = intValidation();
-
-                    if (choice2 < 1 || choice2 > 7) {
-                        System.out.println("Please type a number from 1 to 7.");
-                        continue;
-                    }
-
-                    if (choice2 == 7) {
-                        System.out.println("Quitting...");
-                        break;
-                    }
-                    //  Add items to cart by product ID
-                    if (choice2 == 1) {
-                        System.out.println("Please type the ID of the item to add:");
-                
-                        String id = sc.nextLine();
-                   
-                        boolean addItem = shc.add(id);
-                        if(addItem) {
-                            System.out.println("Product: " + id + " successfully added");
-                        }
-                    }
-                    // Display all items currently in cart
-                    if (choice2 == 2) {
-                        shc.display();
-                    }
-                    // Calculate total cart price
-                    if (choice2 == 3) {
-                        double totalPrice = shc.totalPrice();
-                        System.out.printf("Total price: %.2f", totalPrice);
-                        System.out.println();
-                    }
-                    // Remove items from cart
-                    if (choice2 == 4) {
-                        if (shc.getCart().isEmpty()) {
-                            System.out.println("Your cart is currently empty");
-                        }
-                        else {
-                            System.out.println("Insert ID of the the item to remove");
-                            String id = sc.nextLine();
-                            shc.remove(id);
-                        }
-                    }             
-                    // Check if a specific item is in the cart
-                    if (choice2 == 5) {
-                        if (shc.getCart().isEmpty()) {
-                            System.out.println("Your cart is currently empty");
-                        }
-                        else {
-                            System.out.println("Insert ID of the the item");
-                            String id = sc.nextLine();
-                            boolean isInCart = shc.search(id);
-                            if(isInCart) {
-                                System.out.println("The item '" + id + "' is in the cart");
-                            }
-                            else System.out.println("The item '" + id + "' is not in the cart");
-                        }
-                    }
-                    // Clear entire cart
-                    if (choice2 == 6) {
-                        shc.getCart().clear();
-                        System.out.println("Your cart is now empty");
-                    }
-                }
-            }
-            // Find products matching any of several tags using set union
-            if (choice == 11) {
-                System.out.print("Please type tags (comma separated): ");
-                String tagLine = sc.nextLine();
-
-                Set<String> userTags = new HashSet<>();
-                for (String t : tagLine.split(",")) {
-                    userTags.add(t.trim().toLowerCase());
-                }
-
-                Set<Product> result = new HashSet<>();
-                for (String s : userTags) {
-                    Set<Product> matchesForThisTag = new HashSet<>();
-
-                    for (Product p : products) {
-                        for (String t : p.getTags()) {
-                            if (s.equalsIgnoreCase(t)) {
-                                matchesForThisTag.add(p);
-                            }
-                        }
-                    }
-                    result.addAll(matchesForThisTag);
-                }
-                if (result.isEmpty()) {
-                    System.out.println("No products found for those tags.");
-                } else {
-                    System.out.println("Products matching ANY of the tags:");
-                    for (Product p : result) {
-                        System.out.println(p);
-                        System.out.println();
-                    }
-                }  
-            }
-            // Combine price range filtering with tag filtering
-            if (choice == 12) {
-                System.out.print("Enter a tag: ");
-                String targetTag = sc.nextLine().trim().toLowerCase();
-
-                Set<Product> filteredSet = new HashSet<>();
-
-                for (Product p : products) {
-                    Set<String> productTags = p.getTags();
-
-                    for (String t : productTags) {
-                        if (t.toLowerCase().equals(targetTag)) {
-                            filteredSet.add(p);
-                            break;
-                        }
-                    }
-                }
-
-                if (filteredSet.isEmpty()) {
-                    System.out.println("No products found with tag: " + targetTag);
-                } 
-                else {
-                    BST newBST = new BST();
-                    for (Product p : filteredSet) {
-                        newBST.insert(p);
-                    }
-                    double minValue = 0;
-                    double maxValue = 0;
-
-                    while(true) {
-                        System.out.print("Please enter the minimum value: ");
-                        minValue = sc.nextDouble();
-                        sc.nextLine();
-
-                        System.out.print("Please enter the maximum value: ");
-                        maxValue = sc.nextDouble();
-                        sc.nextLine();
-
-                        if(minValue < maxValue) break;
-                        else System.out.println("Maximum value must be greater than minimum value");
-                    }
-                    Set<Product> result = newBST.getProductsInRange(minValue, maxValue);
-
-                    if (result.isEmpty()) {
-                        System.out.println("No products found in that price range.");
-                    } else {
-                        for (Product p : result) {
-                            System.out.println(p);
-                            System.out.println();
-                        }
-                    }
-                }           
-            }
+    /**
+     * Searches for a product by ID and prints it if found.
+     *
+     * @param hTable the hash table to search
+     */
+    private static void searchById(HashTable hTable) {
+        System.out.print("Enter product ID: ");
+        String id = sc.nextLine().trim();
+        Product found = hTable.getProduct(id);
+        if (found != null) {
+            System.out.println(found);
+        } else {
+            System.out.println("No product found with ID '" + id + "'.");
         }
     }
 
     /**
-     * Prints the main menu of options for managing products and the shopping cart.
-     * This method does not read any input; it only displays the choices.
+     * Removes a product from all three data structures.
+     *
+     * @param hTable the hash table
+     * @param bst    the BST
      */
+    private static void removeProduct(HashTable hTable, BST bst) {
+        System.out.print("Enter product ID to remove: ");
+        String id = sc.nextLine().trim();
+        Product p = hTable.getProduct(id);
+
+        if (p == null) {
+            System.out.println("No product found with ID '" + id + "'.");
+            return;
+        }
+
+        bst.remove(p);
+        hTable.remove(id);
+        products.remove(p);
+        System.out.println("'" + p.getName() + "' removed successfully.");
+    }
+
+    /**
+     * Prompts for a price range and displays all matching products.
+     *
+     * @param bst the BST to query
+     */
+    private static void filterByPriceRange(BST bst) {
+        double[] range = promptPriceRange();
+        Set<Product> result = bst.getProductsInRange(range[0], range[1]);
+        if (result.isEmpty()) {
+            System.out.println("No products found in that price range.");
+        } else {
+            result.forEach(p -> System.out.println(p + "\n"));
+        }
+    }
+
+    /**
+     * Displays the least and most expensive products.
+     *
+     * @param bst the BST to query
+     */
+    private static void showMinMax(BST bst) {
+        Product min = bst.findMin();
+        Product max = bst.findMax();
+        if (min == null) {
+            System.out.println("No products in inventory.");
+            return;
+        }
+        System.out.println("Least expensive:\n" + min + "\n");
+        System.out.println("Most expensive:\n" + max);
+    }
+
+    /**
+     * Finds products that contain a single specified tag.
+     */
+    private static void filterBySingleTag() {
+        System.out.print("Enter tag: ");
+        String tag = sc.nextLine().trim().toLowerCase();
+        Set<Product> result = new HashSet<>();
+        for (Product p : products) {
+            if (p.getTags().stream().anyMatch(t -> t.equalsIgnoreCase(tag))) {
+                result.add(p);
+            }
+        }
+        printResults(result, "Products tagged '" + tag + "':", "No products found with tag '" + tag + "'.");
+    }
+
+    /**
+     * Finds products that match ALL of the specified tags (set intersection).
+     */
+    private static void filterByAllTags() {
+        System.out.print("Enter tags (comma-separated): ");
+        Set<String> userTags = parseTags(sc.nextLine(), ",");
+        Set<Product> result = new HashSet<>();
+        for (Product p : products) {
+            Set<String> lower = lowerCaseTags(p.getTags());
+            if (lower.containsAll(userTags)) {
+                result.add(p);
+            }
+        }
+        printResults(result, "Products matching ALL tags:", "No products match all specified tags.");
+    }
+
+    /**
+     * Finds products in a given category that do NOT carry a specified tag
+     * (set difference: category − tag).
+     */
+    private static void filterByCategoryNotTag() {
+        System.out.print("Category to include: ");
+        String includeCategory = sc.nextLine().trim().toLowerCase();
+        System.out.print("Tag to exclude: ");
+        String excludeTag = sc.nextLine().trim().toLowerCase();
+
+        Set<Product> categorySet = new HashSet<>();
+        Set<Product> excludedSet = new HashSet<>();
+
+        for (Product p : products) {
+            if (p.getCategory().equalsIgnoreCase(includeCategory)) categorySet.add(p);
+            if (p.getTags().stream().anyMatch(t -> t.equalsIgnoreCase(excludeTag))) excludedSet.add(p);
+        }
+        categorySet.removeAll(excludedSet);
+
+        String header = "Products in '" + includeCategory + "' without tag '" + excludeTag + "':";
+        printResults(categorySet, header, "No matching products found.");
+    }
+
+    /**
+     * Finds products that match ANY of the specified tags (set union).
+     */
+    private static void filterByAnyTag() {
+        System.out.print("Enter tags (comma-separated): ");
+        Set<String> userTags = parseTags(sc.nextLine(), ",");
+        Set<Product> result = new HashSet<>();
+        for (Product p : products) {
+            for (String t : p.getTags()) {
+                if (userTags.contains(t.toLowerCase())) {
+                    result.add(p);
+                    break;
+                }
+            }
+        }
+        printResults(result, "Products matching ANY of the tags:", "No products found for those tags.");
+    }
+
+    /**
+     * Filters by tag first, then applies a price range on the matching subset.
+     */
+    private static void filterByTagAndPriceRange() {
+        System.out.print("Enter tag: ");
+        String tag = sc.nextLine().trim().toLowerCase();
+
+        Set<Product> tagMatches = new HashSet<>();
+        for (Product p : products) {
+            if (p.getTags().stream().anyMatch(t -> t.equalsIgnoreCase(tag))) {
+                tagMatches.add(p);
+            }
+        }
+
+        if (tagMatches.isEmpty()) {
+            System.out.println("No products found with tag '" + tag + "'.");
+            return;
+        }
+
+        BST subBST = new BST();
+        tagMatches.forEach(subBST::insert);
+
+        double[] range = promptPriceRange();
+        Set<Product> result = subBST.getProductsInRange(range[0], range[1]);
+        printResults(result, "Products tagged '" + tag + "' in price range:", "No products found in that range.");
+    }
+
+    // =========================================================================
+    // SHOPPING CART SUB-MENU
+    // =========================================================================
+
+    /**
+     * Presents the shopping-cart sub-menu and delegates to the appropriate
+     * {@link ShoppingCart} methods.
+     *
+     * @param shc the shopping cart instance (persists across menu visits)
+     */
+    private static void shoppingCartMenu(ShoppingCart shc) {
+        while (true) {
+            printCartMenu();
+            int choice = intValidation();
+
+            if (choice < 1 || choice > 8) {
+                System.out.println("Please enter a number from 1 to 8.");
+                continue;
+            }
+
+            if (choice == 8) {
+                System.out.println("Returning to main menu.");
+                break;
+            } else if (choice == 1) {
+                System.out.print("Enter product ID: ");
+                String id = sc.nextLine().trim();
+                if (shc.add(id)) System.out.println("Product '" + id + "' added to cart.");
+            } else if (choice == 2) {
+                shc.display();
+            } else if (choice == 3) {
+                System.out.printf("Cart total: $%.2f%n", shc.totalPrice());
+            } else if (choice == 4) {
+                if (shc.getCart().isEmpty()) {
+                    System.out.println("Your cart is empty.");
+                } else {
+                    System.out.print("Enter product ID to remove: ");
+                    shc.remove(sc.nextLine().trim());
+                }
+            } else if (choice == 5) {
+                if (shc.getCart().isEmpty()) {
+                    System.out.println("Your cart is empty.");
+                } else {
+                    System.out.print("Enter product ID: ");
+                    String id = sc.nextLine().trim();
+                    System.out.println(shc.search(id)
+                        ? "'" + id + "' is in the cart."
+                        : "'" + id + "' is not in the cart.");
+                }
+            } else if (choice == 6) {
+                shc.clear();
+            } else if (choice == 7) {
+                System.out.print("Discount percentage (e.g. 10 for 10%): ");
+                double pct = sc.nextDouble();
+                sc.nextLine();
+                shc.applyDiscount(pct);
+            }
+        }
+    }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    /**
+     * Prompts the user for a valid minimum/maximum price range.
+     *
+     * @return a double array where [0] is the minimum and [1] is the maximum
+     */
+    private static double[] promptPriceRange() {
+        double min, max;
+        while (true) {
+            System.out.print("Minimum price: $");
+            min = sc.nextDouble();
+            sc.nextLine();
+            System.out.print("Maximum price: $");
+            max = sc.nextDouble();
+            sc.nextLine();
+            if (min >= 0 && max >= min) break;
+            System.out.println("Invalid range. Maximum must be ≥ minimum and both must be non-negative.");
+        }
+        return new double[]{min, max};
+    }
+
+    /**
+     * Prints a result set with a header, or an empty message if the set is empty.
+     *
+     * @param result       the set of products to display
+     * @param header       message to print before the results
+     * @param emptyMessage message to print when the set is empty
+     */
+    private static void printResults(Set<Product> result, String header, String emptyMessage) {
+        if (result.isEmpty()) {
+            System.out.println(emptyMessage);
+        } else {
+            System.out.println("\n" + header);
+            result.forEach(p -> System.out.println(p + "\n"));
+        }
+    }
+
+    /**
+     * Splits a tag string by the given delimiter, trims whitespace, and
+     * lower-cases each token.
+     *
+     * @param tagLine   the raw tag string entered by the user
+     * @param delimiter the separator character(s) to split on
+     * @return a set of normalised tag strings
+     */
+    private static Set<String> parseTags(String tagLine, String delimiter) {
+        Set<String> tags = new HashSet<>();
+        for (String t : tagLine.split(delimiter)) {
+            String trimmed = t.trim().toLowerCase();
+            if (!trimmed.isEmpty()) tags.add(trimmed);
+        }
+        return tags;
+    }
+
+    /**
+     * Returns a new set containing all tags from the given set in lower case.
+     *
+     * @param tags the original tag set
+     * @return lower-cased copy
+     */
+    private static Set<String> lowerCaseTags(Set<String> tags) {
+        Set<String> lower = new HashSet<>();
+        for (String t : tags) lower.add(t.toLowerCase());
+        return lower;
+    }
+
+    // =========================================================================
+    // MENU PRINTERS
+    // =========================================================================
+
+    /** Prints the main menu. */
     private static void printMenu() {
-        System.out.println("Options:");
-        System.out.println("[1] Add new product");
-        System.out.println("[2] Search product by ID");
-        System.out.println("[3] Display products sorted by price");
-        System.out.println("[4] Remove a product by ID");
-        System.out.println("[5] Find products within a price range");
-        System.out.println("[6] Find the most expensive and least expensive products");
-        System.out.println("[7] Find and display all products with a user-specified tag");
-        System.out.println("[8] Find products matching multiple tags");
-        System.out.println("[9] Find products in one category but not another using set difference");
+        System.out.println("\n==============================");
+        System.out.println(" Inventory Management System");
+        System.out.println("==============================");
+        System.out.println("[1]  Add new product");
+        System.out.println("[2]  Search product by ID");
+        System.out.println("[3]  Display products sorted by price");
+        System.out.println("[4]  Remove a product by ID");
+        System.out.println("[5]  Find products within a price range");
+        System.out.println("[6]  Find most and least expensive products");
+        System.out.println("[7]  Find products by a single tag");
+        System.out.println("[8]  Find products matching ALL specified tags (intersection)");
+        System.out.println("[9]  Find products in a category excluding a tag (difference)");
         System.out.println("[10] Shopping Cart");
-        System.out.println("[11] Find products matching any of several tags using set union");
-        System.out.println("[12] Combine price range filtering with tag filtering");
+        System.out.println("[11] Find products matching ANY specified tag (union)");
+        System.out.println("[12] Filter by tag and price range");
         System.out.println("[13] Quit");
         System.out.print(">> ");
     }
 
-    /**
-     * Prints the submenu for shopping cart operations.
-     * <p>
-     * This method only displays the available options; it does not
-     * perform any actions or read input.
-     * </p>
-     */
-    private static void shopingCart() {
-    System.out.println("Shopping Cart Options:");
-    System.out.println("[1] Add items to cart by product ID");
-    System.out.println("[2] Display all items currently in cart");
-    System.out.println("[3] Calculate total cart price");
-    System.out.println("[4] Remove items from cart");
-    System.out.println("[5] Check if a specific item is in the cart");
-    System.out.println("[6] Clear entire cart");
-    System.out.println("[7] Quit");
-    System.out.print(">> ");
-}
+    /** Prints the shopping cart sub-menu. */
+    private static void printCartMenu() {
+        System.out.println("\n--- Shopping Cart ---");
+        System.out.println("[1] Add item by ID");
+        System.out.println("[2] View cart");
+        System.out.println("[3] View total price");
+        System.out.println("[4] Remove item by ID");
+        System.out.println("[5] Check if item is in cart");
+        System.out.println("[6] Clear cart");
+        System.out.println("[7] Apply discount");
+        System.out.println("[8] Back to main menu");
+        System.out.print(">> ");
+    }
 
+    // =========================================================================
+    // INPUT VALIDATION
+    // =========================================================================
 
     /**
-     * Reads and validates an integer from user input.
-     * <p>
-     * This method repeatedly prompts the user until a valid integer is entered.
-     * If a non-integer is provided, the invalid token is discarded and an error
-     * message is printed.
-     * </p>
+     * Reads an integer from standard input, re-prompting on invalid input.
      *
-     * @return a valid integer read from {@link #sc}.
+     * @return a valid integer entered by the user
      */
     public static int intValidation() {
         while (true) {
@@ -530,7 +501,7 @@ public class ProductManager {
                 sc.nextLine();
                 return n;
             } catch (InputMismatchException e) {
-                System.out.println("Must enter a number.");
+                System.out.println("Please enter a valid number.");
                 sc.next();
                 System.out.print(">> ");
             }
