@@ -1,0 +1,39 @@
+# Compiled Java class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Log files
+*.log
+
+# BlueJ project files
+*.ctxt
+
+# Mobile Tools for Java (MobileJ)
+.mtj.tmp/
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.class
+
+# Build output
+out/
+bin/
+
+# Cart exports
+cart_export.txt
+*.txt
