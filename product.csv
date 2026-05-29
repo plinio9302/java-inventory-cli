@@ -1,0 +1,26 @@
+product_id,name,price,category,stock,tags
+ELEC001,Wireless Mouse,29.99,Electronics,45,wireless;bestseller;in-stock
+ELEC002,USB-C Cable,12.99,Electronics,120,electronics;in-stock
+ELEC003,Bluetooth Headphones,89.99,Electronics,30,wireless;bluetooth;bestseller;in-stock
+ELEC004,Laptop Stand,45.50,Electronics,25,electronics;in-stock;on-sale
+ELEC005,Mechanical Keyboard,129.99,Electronics,15,electronics;bestseller;in-stock
+ELEC006,Webcam HD,65.00,Electronics,8,electronics;in-stock
+ELEC007,Phone Charger,19.99,Electronics,200,electronics;in-stock;on-sale
+ELEC008,Portable SSD 1TB,149.99,Electronics,12,electronics;bestseller;in-stock
+BOOK001,Python Programming,49.99,Books,50,books;in-stock;bestseller
+BOOK002,Data Structures Guide,39.99,Books,35,books;in-stock
+BOOK003,Web Development,44.99,Books,28,books;in-stock;on-sale
+BOOK004,Machine Learning Basics,59.99,Books,20,books;in-stock
+CLOTH001,Cotton T-Shirt,18.99,Clothing,100,clothing;in-stock;on-sale
+CLOTH002,Denim Jeans,54.99,Clothing,60,clothing;in-stock;bestseller
+CLOTH003,Winter Jacket,89.99,Clothing,25,clothing;in-stock
+CLOTH004,Running Shoes,79.99,Clothing,40,clothing;in-stock;bestseller
+CLOTH005,Baseball Cap,15.99,Clothing,80,clothing;in-stock;clearance;on-sale
+CLOTH006,Wool Sweater,65.00,Clothing,30,clothing;in-stock
+HOME001,Coffee Maker,75.00,Home,22,home;in-stock;bestseller
+HOME002,Blender,55.00,Home,18,home;in-stock;on-sale
+HOME003,Desk Lamp,32.99,Home,45,home;in-stock
+HOME004,Storage Bins Set,24.99,Home,65,home;in-stock;on-sale
+TOY001,Building Blocks Set,34.99,Toys,50,toys;in-stock;bestseller
+TOY002,Board Game,28.99,Toys,35,toys;in-stock
+TOY003,Puzzle 1000pc,19.99,Toys,40,toys;in-stock;clearance;on-sale
