@@ -1,109 +1,64 @@
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Set;
 
 /**
- * A Binary Search Tree (BST) storing Product objects ordered by price.
- * Supports insertion, removal, searching, and retrieving products in a price range.
+ * A Binary Search Tree (BST) that stores {@link Product} objects ordered by price.
+ *
+ * <p>Products with equal prices are placed in the left subtree. The tree supports
+ * insertion, removal (by product ID), in-order traversal, price-range queries,
+ * and min/max lookups.</p>
+ *
+ * <p><b>Complexity:</b> O(log n) average for all operations; O(n) worst-case
+ * on a degenerate (sorted-insert) tree.</p>
+ *
+ * @author Plinio Durango
+ * @version 2.0
  */
 public class BST {
-    public BSTNode root;
 
-    /**
-     * Creates an empty BST.
-     */
+    // Package-private so ProductManager can access it if needed in tests.
+    BSTNode root;
+
+    /** Creates an empty BST. */
     public BST() {
         root = null;
     }
 
-    /*=============== SEARCH ===============*/
+    // =========================================================================
+    // INSERT
+    // =========================================================================
 
     /**
-     * Searches for a product with the given price.
+     * Inserts a product into the BST ordered by price.
+     * Products with the same price are placed in the left subtree.
      *
-     * @param price The price to search for.
-     * @return true if a product with that price exists, false otherwise.
+     * @param p the product to insert
      */
-    public boolean search(double price) {
-        return searchHelper(root, price);
+    public void insert(Product p) {
+        root = insertHelper(root, p);
     }
 
-    /**
-     * Recursive search helper.
-     *
-     * @param node  Current node in traversal.
-     * @param price Price to search for.
-     * @return true if found, false otherwise.
-     */
-    private boolean searchHelper(BSTNode node, double price) {
-        if (node == null) return false;
-
-        double nodePrice = node.product.getPrice();
-
-        if (price == nodePrice) return true;
-        else if (price < nodePrice) return searchHelper(node.left, price);
-        else return searchHelper(node.right, price);
-    }
-
-    /*=============== FIND MIN/MAX ===============*/
-
-    /**
-     * Finds the node with the minimum price in a subtree.
-     *
-     * @param node Root of subtree.
-     * @return Node with the smallest price.
-     */
-    public BSTNode findMin(BSTNode node) {
-        while (node.left != null) node = node.left;
+    private BSTNode insertHelper(BSTNode node, Product p) {
+        if (node == null) return new BSTNode(p);
+        if (p.getPrice() <= node.product.getPrice()) {
+            node.left  = insertHelper(node.left,  p);
+        } else {
+            node.right = insertHelper(node.right, p);
+        }
         return node;
     }
 
-    /**
-     * Finds the node with the maximum price in a subtree.
-     *
-     * @param node Root of subtree.
-     * @return Node with the highest price.
-     */
-    public BSTNode findMax(BSTNode node) {
-        while (node.right != null) node = node.right;
-        return node;
-    }
+    // =========================================================================
+    // REMOVE
+    // =========================================================================
 
     /**
-     * Returns the product with the minimum price in the entire BST.
+     * Removes the product that matches {@code target} by both price and ID.
      *
-     * @return Product with lowest price or null if tree is empty.
-     */
-    public Product findMin() {
-        if (root == null) return null;
-
-        BSTNode curr = root;
-        while (curr.left != null) {
-            curr = curr.left;
-        }
-        return curr.product;
-    }
-
-    /**
-     * Returns the product with the maximum price in the entire BST.
+     * <p>When multiple products share the same price the tree is searched
+     * in both subtrees until the correct ID is found.</p>
      *
-     * @return Product with highest price or null if tree is empty.
-     */
-    public Product findMax() {
-        if (root == null) return null;
-
-        BSTNode curr = root;
-        while (curr.right != null) {
-            curr = curr.right;
-        }
-        return curr.product;
-    }
-
-    /*=============== REMOVE USING ID ===============*/
-
-    /**
-     * Removes a specific product from the BST (matches by price and ID).
-     *
-     * @param target The target product to remove.
+     * @param target the product to remove
      */
     public void remove(Product target) {
         root = removeHelper(root, target);
@@ -112,54 +67,121 @@ public class BST {
     /**
      * Recursive remove helper.
      *
-     * @param node   Current node in traversal.
-     * @param target Product to remove.
-     * @return Updated subtree root.
+     * @param node   current subtree root
+     * @param target product to remove (matched by price then ID)
+     * @return updated subtree root
      */
     private BSTNode removeHelper(BSTNode node, Product target) {
         if (node == null) return null;
 
-        double nodePrice = node.product.getPrice();
+        double nodePrice   = node.product.getPrice();
         double targetPrice = target.getPrice();
 
         if (targetPrice < nodePrice) {
+            // Target is cheaper — go left
             node.left = removeHelper(node.left, target);
-        }
-        else if (targetPrice > nodePrice) {
+        } else if (targetPrice > nodePrice) {
+            // Target is more expensive — go right
             node.right = removeHelper(node.right, target);
-        }
-        else {
-            // SAME PRICE, ensure ID matches
-            if (!node.product.getID().equals(target.getID())) {
-                node.left = removeHelper(node.left, target);
-                return node;
+        } else {
+            // Prices match — verify by ID
+            if (node.product.getID().equals(target.getID())) {
+                // Found the exact node to remove
+                if (node.left == null)  return node.right;
+                if (node.right == null) return node.left;
+
+                // Two children: replace with in-order successor
+                BSTNode succ = findMinNode(node.right);
+                node.product = succ.product;
+                node.right   = removeHelper(node.right, succ.product);
+            } else {
+                // Same price but different ID — search BOTH subtrees because
+                // equal-price products can be on either side.
+                node.left  = removeHelper(node.left,  target);
+                node.right = removeHelper(node.right, target);
             }
-
-            // Case 1: no children
-            if (node.left == null && node.right == null) return null;
-
-            // Case 2: only right child
-            if (node.left == null) return node.right;
-
-            // Case 3: only left child
-            if (node.right == null) return node.left;
-
-            // Case 4: two children → replace with inorder successor
-            BSTNode succ = findMin(node.right);
-            node.product = succ.product;
-            node.right = removeHelper(node.right, succ.product);
         }
         return node;
     }
 
-    /*=============== GET PRODUCTS IN PRICE RANGE ===============*/
+    // =========================================================================
+    // SEARCH
+    // =========================================================================
 
     /**
-     * Returns all products whose prices fall within a given range.
+     * Returns {@code true} if any product in the tree has the given price.
      *
-     * @param min Minimum price (inclusive).
-     * @param max Maximum price (inclusive).
-     * @return A Set of all products in the range.
+     * @param price the price to search for
+     * @return {@code true} if found, {@code false} otherwise
+     */
+    public boolean search(double price) {
+        return searchHelper(root, price);
+    }
+
+    private boolean searchHelper(BSTNode node, double price) {
+        if (node == null) return false;
+        double nodePrice = node.product.getPrice();
+        if (price == nodePrice)   return true;
+        if (price  < nodePrice)   return searchHelper(node.left,  price);
+        return searchHelper(node.right, price);
+    }
+
+    // =========================================================================
+    // MIN / MAX
+    // =========================================================================
+
+    /**
+     * Returns the product with the lowest price in the tree.
+     *
+     * @return the cheapest product, or {@code null} if the tree is empty
+     */
+    public Product findMin() {
+        if (root == null) return null;
+        return findMinNode(root).product;
+    }
+
+    /**
+     * Returns the product with the highest price in the tree.
+     *
+     * @return the most expensive product, or {@code null} if the tree is empty
+     */
+    public Product findMax() {
+        if (root == null) return null;
+        return findMaxNode(root).product;
+    }
+
+    /**
+     * Returns the node with the minimum price in a subtree.
+     *
+     * @param node root of the subtree
+     * @return the leftmost (minimum-price) node
+     */
+    public BSTNode findMinNode(BSTNode node) {
+        while (node.left != null) node = node.left;
+        return node;
+    }
+
+    /**
+     * Returns the node with the maximum price in a subtree.
+     *
+     * @param node root of the subtree
+     * @return the rightmost (maximum-price) node
+     */
+    public BSTNode findMaxNode(BSTNode node) {
+        while (node.right != null) node = node.right;
+        return node;
+    }
+
+    // =========================================================================
+    // PRICE-RANGE QUERY
+    // =========================================================================
+
+    /**
+     * Returns all products whose prices fall within [{@code min}, {@code max}].
+     *
+     * @param min minimum price (inclusive)
+     * @param max maximum price (inclusive)
+     * @return set of matching products; never {@code null}
      */
     public Set<Product> getProductsInRange(double min, double max) {
         Set<Product> result = new HashSet<>();
@@ -167,111 +189,53 @@ public class BST {
         return result;
     }
 
-    /**
-     * Recursive helper to add products in a price range.
-     *
-     * @param node   Current node.
-     * @param min    Minimum price.
-     * @param max    Maximum price.
-     * @param result Result set to collect products.
-     */
     private void rangeHelper(BSTNode node, double min, double max, Set<Product> result) {
         if (node == null) return;
-
-        double nodePrice = node.product.getPrice();
-
-        if (nodePrice >= min && nodePrice <= max) {
+        double p = node.product.getPrice();
+        if (p >= min && p <= max) {
             result.add(node.product);
-            rangeHelper(node.left, min, max, result);
+            rangeHelper(node.left,  min, max, result);
             rangeHelper(node.right, min, max, result);
-        }
-        else if (nodePrice < min) {
+        } else if (p < min) {
             rangeHelper(node.right, min, max, result);
-        }
-        else {
-            rangeHelper(node.left, min, max, result);
+        } else {
+            rangeHelper(node.left,  min, max, result);
         }
     }
 
-    /*=============== INSERT ===============*/
+    // =========================================================================
+    // IN-ORDER TRAVERSAL
+    // =========================================================================
 
     /**
-     * Inserts a product into the BST based on its price.
-     *
-     * @param p Product to insert.
-     */
-    public void insert(Product p) {
-        root = insertHelper(root, p);
-    }
-
-    /**
-     * Recursive insert helper.
-     *
-     * @param node Current subtree root.
-     * @param p    Product to insert.
-     * @return Updated subtree root.
-     */
-    private BSTNode insertHelper(BSTNode node, Product p) {
-        if (node == null) {
-            return new BSTNode(p);
-        }
-
-        double nodePrice = node.product.getPrice();
-        double price = p.getPrice();
-
-        if (price <= nodePrice) {
-            node.left = insertHelper(node.left, p);
-        } 
-        else {
-            node.right = insertHelper(node.right, p);
-        }
-
-        return node;
-    }
-
-    /*=============== INORDER TRAVERSAL ===============*/
-
-    /**
-     * Prints the BST contents in ascending price order.
+     * Prints all products to {@code stdout} in ascending price order.
      */
     public void inorderTraversal() {
         inorderHelper(root);
     }
 
-    /**
-     * Recursive inorder traversal helper.
-     *
-     * @param node Current node.
-     */
     private void inorderHelper(BSTNode node) {
         if (node == null) return;
-
         inorderHelper(node.left);
         System.out.println(node.product);
         System.out.println();
         inorderHelper(node.right);
     }
 
-    /*=============== NODE CLASS ===============*/
+    // =========================================================================
+    // NODE
+    // =========================================================================
 
     /**
-     * Represents a single node in the BST.
-     * Holds a Product and references to left/right children.
+     * Internal tree node holding a {@link Product} and left/right child references.
      */
-    private static class BSTNode {
-        public Product product;
-        public BSTNode left;
-        public BSTNode right;
+    static class BSTNode {
+        Product product;
+        BSTNode left;
+        BSTNode right;
 
-        /**
-         * Creates a node storing a product.
-         *
-         * @param product The product to store.
-         */
-        public BSTNode(Product product) {
+        BSTNode(Product product) {
             this.product = product;
-            this.left = null;
-            this.right = null;
         }
     }
 }
